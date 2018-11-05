@@ -1,5 +1,6 @@
 #!/bin/bash
-
+export CIDR=$(curl localhost:23954 | cut -f4 -d'"')
+iptables -A INPUT -s "$CIDR" -d "$CIDR" -j ACCEPT
 pushd /var/vcap/jobs/silk-cni-wrapper/bin/
 find /var/vcap/packages/silk-cni/bin/ -type f ! -name *wrapper* -exec ln -sf {} \;
 

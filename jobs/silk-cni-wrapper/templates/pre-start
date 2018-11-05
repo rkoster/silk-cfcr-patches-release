@@ -1,7 +1,5 @@
 #!/bin/bash
 
-apt-get -f install && apt update && apt install uuid-runtime -y
-
-pushd /var/vacp/jobs/silk-cni-wrapper/bin/
+pushd /var/vcap/jobs/silk-cni-wrapper/bin/
 find /var/vcap/packages/silk-cni/bin/ -type f ! -name *wrapper* -exec ln -sf {} \;
 

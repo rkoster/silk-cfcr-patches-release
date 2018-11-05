@@ -1,0 +1,4 @@
+#!/bin/bash
+
+STDIN=$(sed 's#{#{"metadata":{"policy_group_id":"'$CNI_CONTAINERID'","app_id":"'$CNI_CONTAINERID'"},#')
+echo "$STDIN" | /var/vcap/packages/silk-cni/bin/cni-wrapper-plugin <&0 2>&1 | tee -a /tmp/cni-wrapper-plugin-out.log

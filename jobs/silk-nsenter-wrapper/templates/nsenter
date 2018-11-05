@@ -1,0 +1,4 @@
+#!/bin/bash
+/var/vcap/jobs/kubelet/packages/cni/bin/nsenter \
+    $1 -F -- \
+    ip -o -4 addr show dev eth0 scope link | sed 's# peer#/32 peer#g'

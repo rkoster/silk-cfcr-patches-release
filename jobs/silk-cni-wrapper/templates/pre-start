@@ -1,0 +1,4 @@
+#!/bin/bash
+
+pushd /var/vacp/jobs/silk-cni-wrapper/bin/
+find /var/vcap/packages/silk-cni/bin/ -type f ! -name *wrapper* -exec ln -sf {} \;

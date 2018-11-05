@@ -1,0 +1,10 @@
+---
+name: silk-nsenter-wrapper
+
+templates:
+  ctl: bin/ctl
+  nsenter: bin/nsenter
+
+packages: []
+
+properties: {}

@@ -1,0 +1,10 @@
+---
+name: silk-cni-wrapper
+
+templates:
+  cni-wrapper-plugin: bin/cni-wrapper-plugin
+  pre-start: bin/pre-start
+
+packages: []
+
+properties: {}

@@ -1,6 +1,6 @@
 #!/bin/bash
 
-KUBECONFIG=/var/vcap/jobs/kubelet/config/kubeconfig /var/vcap/packages/kubernetes/bin/kubectl get pods -n "$K8S_POD_NAMESPACE" "$K8S_POD_NAME" -o=jsonpath='{.metadata.ownerReferences[0].uid}'
+CONTAINER_POLICY_ID=$(KUBECONFIG=/var/vcap/jobs/kubelet/config/kubeconfig /var/vcap/packages/kubernetes/bin/kubectl get pods -n "$K8S_POD_NAMESPACE" "$K8S_POD_NAME" -o=jsonpath='{.metadata.ownerReferences[0].uid}')
 STDIN=$(sed 's#{#{"metadata":{"policy_group_id":"'$CONTAINER_POLICY_ID'","app_id":"'$CNI_CONTAINERID'"},#')
 echo "$STDIN" | /var/vcap/packages/silk-cni/bin/cni-wrapper-plugin <&0 2>&1 | tee -a /tmp/cni-wrapper-plugin-out.log
 

@@ -12,21 +12,25 @@ while curl localhost:23954; do
 
 done
 SERVICE_NETWORK_CIDR="$(cat /var/vcap/jobs/kube-proxy/config/config.yml | grep '^clusterCIDR' | cut -f2 -d' ')"
-
+iptables -F INPUT
+iptables -F OUTPUT
 # ALLOW ALL TRAFFIC ON KUBE MASTER
 <% if_link("kubernetes-workers") do |instances| %>
   <% instances.instances.map do |instance| %>
-iptables -I INPUT -p tcp -s "$CIDR" -d "<%= instance.address %>" -j ACCEPT
+iptables -I INPUT -p tcp -s "$SILK_CIDR" -d "$(dig +short <%= instance.address %>)" -j ACCEPT
+iptables -I OUTPUT -p tcp -s "$SILK_CIDR" -d "$(dig +short <%= instance.address %>)" -j ACCEPT
   <% end %>
 <% end %>
 # ALLOW ALL TRAFFIC ON KUBE MASTER
 <% if_link("kube-apiserver") do |instances| %>
   <% instances.instances.map do |instance| %>
-iptables -I INPUT -p tcp -s "$CIDR" -d "<%= instance.address %>" -j ACCEPT
+iptables -A INPUT -p tcp -s "$SILK_CIDR" -d "$(dig +short <%= instance.address %>)" -j ACCEPT
+iptables -A OUTPUT -p tcp -s "$SILK_CIDR" -d "$(dig +short <%= instance.address %>)" -j ACCEPT
   <% end %>
 <% end %>
 
 
 # ALLOW ALL TRAFFIC ON SERVICE NETWORK OF KUBE_PROXY/KUBERNETES SERVICES
-iptables -I INPUT -p tcp -s "$CIDR" -d "$SERVICE_NETWORK_CIDR" -j ACCEPT
+iptables -A INPUT -p tcp -s "$SILK_CIDR" -d "$SERVICE_NETWORK_CIDR" -j ACCEPT
+iptables -A INPUT -p tcp -s "$SILK_CIDR" -d "$SERVICE_NETWORK_CIDR" -j ACCEPT
 

@@ -1,6 +1,21 @@
 #!/bin/bash
-export CIDR=$(curl localhost:23954 | cut -f4 -d'"')
-iptables -A INPUT -s "$CIDR" -d "$CIDR" -j ACCEPT
+
 pushd /var/vcap/jobs/silk-cni-wrapper/bin/
-find /var/vcap/packages/silk-cni/bin/ -type f ! -name *wrapper* -exec ln -sf {} \;
+  find /var/vcap/packages/silk-cni/bin/ -type f ! -name *wrapper* -exec ln -sf {} \;
+popd
+
+SILK_CIDR=$(curl localhost:23954 | cut -f4 -d'"')
+SERVICE_NETWORK_CIDR="$(cat /var/vcap/jobs/kube-proxy/config/config.yml | grep '^clusterCIDR' | cut -f2 -d' ')"a
+# ALLOW ALL TRAFFIC ON SERVICE NETWORK OF KUBE_PROXY/KUBERNETES SERVICES
+<% if_link("kube-workers") do |instances| %>
+  <% instances.instances.map do |instance| %>
+iptables -I INPUT -p tcp -s "$CIDR" -d "<%= instance.address %>" -j ACCEPT
+  <% end %>
+<% end %>
+<% if_link("kube-apiserver") do |instances| %>
+  <% instances.instances.map do |instance| %>
+iptables -I INPUT -p tcp -s "$CIDR" -d "<%= instance.address %>" -j ACCEPT
+  <% end %>
+<% end %>
+iptables -I INPUT -p tcp -s "$CIDR" -d "$SERVICE_NETWORK_CIDR" -j ACCEPT
 

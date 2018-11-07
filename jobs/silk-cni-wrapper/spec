@@ -7,4 +7,12 @@ templates:
 
 packages: []
 
+consumes:
+- name: kube-workers
+  type: kube-workers
+  optional: true
+- name: kube-apiserver
+  type: kube-apiserver
+  optional: true
+
 properties: {}

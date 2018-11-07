@@ -1,4 +1,5 @@
 #!/bin/bash
+
 SILK_CIDR=$(curl localhost:23954 | cut -f4 -d'"')
 SERVICE_NETWORK_CIDR="$(cat /var/vcap/jobs/kube-proxy/config/config.yml | grep '^clusterCIDR' | cut -f2 -d' ')"a
 # ALLOW ALL TRAFFIC ON SERVICE NETWORK OF KUBE_PROXY/KUBERNETES SERVICES

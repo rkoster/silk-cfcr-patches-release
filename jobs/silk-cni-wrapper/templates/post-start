@@ -1,17 +1,32 @@
 #!/bin/bash
 
-SILK_CIDR=$(curl localhost:23954 | cut -f4 -d'"')
+
+
+while curl localhost:23954; do
+ if [ $? -eq 0 ]; then
+   SILK_CIDR=$(curl -s localhost:23954 | cut -f4 -d'"')
+   break;
+ else
+   sleep 1;
+ fi
+
+done
 SERVICE_NETWORK_CIDR="$(cat /var/vcap/jobs/kube-proxy/config/config.yml | grep '^clusterCIDR' | cut -f2 -d' ')"a
-# ALLOW ALL TRAFFIC ON SERVICE NETWORK OF KUBE_PROXY/KUBERNETES SERVICES
-<% if_link("kube-workers") do |instances| %>
+
+# ALLOW ALL TRAFFIC ON KUBE MASTER
+<% if_link("kubernetes-workers") do |instances| %>
   <% instances.instances.map do |instance| %>
 iptables -I INPUT -p tcp -s "$CIDR" -d "<%= instance.address %>" -j ACCEPT
   <% end %>
 <% end %>
+# ALLOW ALL TRAFFIC ON KUBE MASTER
 <% if_link("kube-apiserver") do |instances| %>
   <% instances.instances.map do |instance| %>
 iptables -I INPUT -p tcp -s "$CIDR" -d "<%= instance.address %>" -j ACCEPT
   <% end %>
 <% end %>
+
+
+# ALLOW ALL TRAFFIC ON SERVICE NETWORK OF KUBE_PROXY/KUBERNETES SERVICES
 iptables -I INPUT -p tcp -s "$CIDR" -d "$SERVICE_NETWORK_CIDR" -j ACCEPT
 

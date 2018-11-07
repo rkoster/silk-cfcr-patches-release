@@ -9,8 +9,8 @@ templates:
 packages: []
 
 consumes:
-- name: kube-workers
-  type: kube-workers
+- name: kubernetes-workers
+  type: kubernetes-workers
   optional: true
 - name: kube-apiserver
   type: kube-apiserver

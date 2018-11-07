@@ -11,7 +11,7 @@ while curl localhost:23954; do
  fi
 
 done
-SERVICE_NETWORK_CIDR="$(cat /var/vcap/jobs/kube-proxy/config/config.yml | grep '^clusterCIDR' | cut -f2 -d' ')"a
+SERVICE_NETWORK_CIDR="$(cat /var/vcap/jobs/kube-proxy/config/config.yml | grep '^clusterCIDR' | cut -f2 -d' ')"
 
 # ALLOW ALL TRAFFIC ON KUBE MASTER
 <% if_link("kubernetes-workers") do |instances| %>

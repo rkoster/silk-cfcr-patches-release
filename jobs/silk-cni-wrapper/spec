@@ -3,6 +3,7 @@ name: silk-cni-wrapper
 
 templates:
   cni-wrapper-plugin: bin/cni-wrapper-plugin
+  post-start: bin/post-start
   pre-start: bin/pre-start
 
 packages: []

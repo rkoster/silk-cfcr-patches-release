@@ -11,23 +11,40 @@ while curl localhost:23954; do
  fi
 
 done
-SERVICE_NETWORK_CIDR="$(cat /var/vcap/jobs/kube-proxy/config/config.yml | grep '^clusterCIDR' | cut -f2 -d' ')"
+SERVICE_NETWORK_CIDR="10.100.0.0/16"
 iptables -F INPUT
 iptables -F OUTPUT
-# ALLOW ALL TRAFFIC ON KUBE MASTER
-<% if_link("kubernetes-workers") do |instances| %>
-  <% instances.instances.map do |instance| %>
-iptables -I INPUT  -s "$SILK_CIDR" -d "$(dig +short <%= instance.address %>)" -j ACCEPT
-  <% end %>
-<% end %>
-iptables -I OUTPUT  -s "$SILK_CIDR" -d "0.0.0.0/0" -o eth0 -j ACCEPT
+iptables -F FORWARD
+
 
 # ALLOW ALL TRAFFIC ON KUBE MASTER
 <% if_link("kube-apiserver") do |instances| %>
   <% instances.instances.map do |instance| %>
-iptables -A INPUT  -s "$SILK_CIDR" -d "$(dig +short <%= instance.address %>)" -j ACCEPT
+iptables -I INPUT -s "$SILK_CIDR" -d "$(dig +short <%= instance.address %>)" -j ACCEPT
+iptables -I KUBE-FIREWALL -s "$SILK_CIDR" -d "$(dig +short <%= instance.address %>)" -j ACCEPT
   <% end %>
 <% end %>
+# ALLOW ALL TRAFFIC ON KUBE MASTER
+<% if_link("kubernetes-workers") do |instances| %>
+  <% instances.instances.map do |instance| %>
+iptables -A INPUT  -s "$SILK_CIDR" -d "$(dig +short <%= instance.address %>)" -j ACCEPT
+iptables -A KUBE-FIREWALL -s "$SILK_CIDR" -d "$(dig +short <%= instance.address %>)" -j ACCEPT
+  <% end %>
+<% end %>
+iptables -A INPUT -s "$SILK_CIDR" -d 169.254.169.0/24 -j ACCEPT
+iptables -A KUBE-FIREWALL -s "$SILK_CIDR" -d 169.254.169.0/24 -j ACCEPT
+iptables -A KUBE-FIREWALL -s "$SILK_CIDR" -d "$SERVICE_NETWORK_CIDR" -j ACCEPT
+
+iptables -A OUTPUT -s "$SILK_CIDR" -d "0.0.0.0/0" -j ACCEPT
+iptables -I FORWARD -s "$SILK_CIDR" -d "0.0.0.0/0" -j ACCEPT
+
+iptables -A INPUT -d "$SERVICE_NETWORK_CIDR" -j ACCEPT
+iptables -A OUTPUT -d "$SERVICE_NETWORK_CIDR" -j ACCEPT
+
+
+
+
+
 
 
 # ALLOW ALL TRAFFIC ON SERVICE NETWORK OF KUBE_PROXY/KUBERNETES SERVICES

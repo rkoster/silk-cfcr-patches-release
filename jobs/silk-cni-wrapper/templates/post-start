@@ -12,43 +12,22 @@ while curl localhost:23954; do
 
 done
 SERVICE_NETWORK_CIDR="10.100.0.0/16"
-iptables -F INPUT
-iptables -F OUTPUT
-iptables -F FORWARD
+
+
+for c in INPUT PREROUTING OUTPUT FORWARD; do iptables -t nat -I $c -j LOG --log-prefix "DBG-NAT@$c: "; done
+for c in INPUT OUTPUT; do iptables -I $c -j LOG --log-prefix "DBG@$c: "; done
 
 
 # ALLOW ALL TRAFFIC ON KUBE MASTER
-<% if_link("kube-apiserver") do |instances| %>
+MASTER_HOSTNAMES=<% if_link("kube-apiserver") do |instances| %>
   <% instances.instances.map do |instance| %>
-iptables -I INPUT -s "$SILK_CIDR" -d "$(dig +short <%= instance.address %>)" -j ACCEPT
-iptables -I KUBE-FIREWALL -s "$SILK_CIDR" -d "$(dig +short <%= instance.address %>)" -j ACCEPT
+<%= instance.address %>,
   <% end %>
 <% end %>
 # ALLOW ALL TRAFFIC ON KUBE MASTER
-<% if_link("kubernetes-workers") do |instances| %>
+WORKER_HOSTNAMES=<% if_link("kubernetes-workers") do |instances| %>
   <% instances.instances.map do |instance| %>
-iptables -A INPUT  -s "$SILK_CIDR" -d "$(dig +short <%= instance.address %>)" -j ACCEPT
-iptables -A KUBE-FIREWALL -s "$SILK_CIDR" -d "$(dig +short <%= instance.address %>)" -j ACCEPT
+<%= instance.address %>,
   <% end %>
 <% end %>
-iptables -A INPUT -s "$SILK_CIDR" -d 169.254.169.0/24 -j ACCEPT
-iptables -A KUBE-FIREWALL -s "$SILK_CIDR" -d 169.254.169.0/24 -j ACCEPT
-iptables -A KUBE-FIREWALL -s "$SILK_CIDR" -d "$SERVICE_NETWORK_CIDR" -j ACCEPT
-
-iptables -A OUTPUT -s "$SILK_CIDR" -d "0.0.0.0/0" -j ACCEPT
-iptables -I FORWARD -s "$SILK_CIDR" -d "0.0.0.0/0" -j ACCEPT
-
-iptables -A INPUT -d "$SERVICE_NETWORK_CIDR" -j ACCEPT
-iptables -A OUTPUT -d "$SERVICE_NETWORK_CIDR" -j ACCEPT
-
-
-
-
-
-
-
-# ALLOW ALL TRAFFIC ON SERVICE NETWORK OF KUBE_PROXY/KUBERNETES SERVICES
-iptables -A INPUT  -s "$SILK_CIDR" -d "$SERVICE_NETWORK_CIDR" -j ACCEPT
-iptables -A OUTPUT  -s "$SILK_CIDR" -d "$SERVICE_NETWORK_CIDR" -j ACCEPT
-iptables -A FORWARD -s "$SILK_CIDR" -d "0.0.0.0/0" -o eth0 -j ACCEPT
 

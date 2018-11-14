@@ -14,12 +14,8 @@ done
 SERVICE_NETWORK_CIDR="10.100.0.0/16"
 # ONLY USING INSERT, FIRST RULES ADDED WILL BE LAST ONES TO TRAVERSE, THUS EVERYTHING GETS LOGGED THAT DID NOT HIT ANOTHER CHAIN
 
-for c in PREROUTING OUTPUT; do iptables -t raw -I $c -j LOG --log-prefix "DBG-RAW@$c: "; done
-for c in INPUT OUTPUT FORWARD; do iptables -t security -I $c -j LOG --log-prefix "DBG-SECURITY@$c: "; done
-for c in INPUT OUTPUT FORWARD; do iptables -t filter -I $c -j LOG --log-prefix "DBG-FILTER@$c: "; done
-for c in INPUT OUTPUT FORWARD; do iptables -I $c -j LOG --log-prefix "DBG@$c: "; done
-for c in PREROUTING POSTROUTING OUTPUT; do iptables -t nat -I $c -j LOG --log-prefix "DBG-NAT@$c: "; done
-
+iptables -t raw -I PREROUTING -j TRACE
+iptables -t raw -I OUTPUT -j TRACE
 
 # OUTPUT eth0 ACCEPT
 iptables -I OUTPUT -o eth0 -j ACCEPT
@@ -45,6 +41,14 @@ iptables -t security -I OUTPUT -o silk-vtep -j ACCEPT
 iptables -t raw -I OUTPUT -o silk-vtep -j ACCEPT
 iptables -t filter -I OUTPUT -o silk-vtep -j ACCEPT
 
+exit 0
+for c in PREROUTING OUTPUT; do iptables -t raw -I $c -j LOG --log-prefix "DBG-RAW@$c: "; done
+for c in INPUT OUTPUT FORWARD; do iptables -t security -I $c -j LOG --log-prefix "DBG-SECURITY@$c: "; done
+for c in INPUT OUTPUT FORWARD; do iptables -t filter -I $c -j LOG --log-prefix "DBG-FILTER@$c: "; done
+for c in INPUT OUTPUT FORWARD; do iptables -I $c -j LOG --log-prefix "DBG@$c: "; done
+for c in PREROUTING POSTROUTING OUTPUT; do iptables -t nat -I $c -j LOG --log-prefix "DBG-NAT@$c: "; done
+
+for c in PREROUTING POSTROUTING OUTPUT; do iptables -t mangle -I $c -j LOG --log-prefix "DBG-NAT@$c: "; done
 # ALL INPUT ACCEPT ESTABLISHED,RELATED
 iptables -I INPUT -m state --state RELATED,ESTABLISHEDo -j ACCEPT
 iptables -t security -I INPUT -m state --state RELATED,ESTABLISHED -j ACCEPT

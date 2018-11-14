@@ -14,11 +14,11 @@ done
 SERVICE_NETWORK_CIDR="10.100.0.0/16"
 # ONLY USING INSERT, FIRST RULES ADDED WILL BE LAST ONES TO TRAVERSE, THUS EVERYTHING GETS LOGGED THAT DID NOT HIT ANOTHER CHAIN
 
-for c in INPUT OUTPUT; do iptables -t raw -I $c -j LOG --log-prefix "DBG-RAW@$c: "; done
-for c in INPUT OUTPUT; do iptables -t security -I $c -j LOG --log-prefix "DBG-SECURITY@$c: "; done
-for c in INPUT OUTPUT; do iptables -t filter -I $c -j LOG --log-prefix "DBG-FILTER@$c: "; done
-for c in INPUT OUTPUT; do iptables -I $c -j LOG --log-prefix "DBG@$c: "; done
-for c in INPUT OUTPUT; do iptables -t nat -I $c -j LOG --log-prefix "DBG-NAT@$c: "; done
+for c in PREROUTING OUTPUT; do iptables -t raw -I $c -j LOG --log-prefix "DBG-RAW@$c: "; done
+for c in INPUT OUTPUT FORWARD; do iptables -t security -I $c -j LOG --log-prefix "DBG-SECURITY@$c: "; done
+for c in INPUT OUTPUT FORWARD; do iptables -t filter -I $c -j LOG --log-prefix "DBG-FILTER@$c: "; done
+for c in INPUT OUTPUT FORWARD; do iptables -I $c -j LOG --log-prefix "DBG@$c: "; done
+for c in PREROUTING POSTROUTING OUTPUT; do iptables -t nat -I $c -j LOG --log-prefix "DBG-NAT@$c: "; done
 
 
 # OUTPUT eth0 ACCEPT
@@ -29,7 +29,6 @@ iptables -t raw -I OUTPUT -o eth0 -j ACCEPT
 iptables -t filter -I OUTPUT -o eth0 -j ACCEPT
 # INPUT lo ACCEPT
 iptables -I INPUT -i lo -j ACCEPT
-iptables -t nat -I INPUT -i lo -j ACCEPT
 iptables -t security -I INPUT -i lo -j ACCEPT
 iptables -t filter -I INPUT -i lo -j ACCEPT
 # OUTPUT lo ACCEPT
@@ -48,9 +47,9 @@ iptables -t filter -I OUTPUT -o silk-vtep -j ACCEPT
 
 # ALL INPUT ACCEPT ESTABLISHED,RELATED
 iptables -I INPUT -m state --state RELATED,ESTABLISHEDo -j ACCEPT
-iptables -t nat -I INPUT -m state --state RELATED,ESTABLISHED -j ACCEPT
 iptables -t security -I INPUT -m state --state RELATED,ESTABLISHED -j ACCEPT
 iptables -t filter -I INPUT -m state --state RELATED,ESTABLISHED -j ACCEPT
+iptables -t nat -I INPUT -m state --state RELATED,ESTABLISHED -j ACCEPT
 
 # OUTPUT FROM 169.254.0.1 && 169.254.0.2 ACCEPT
 
@@ -101,6 +100,8 @@ MASTER_HOSTNAMES=<% if_link("kube-apiserver") do |instances| instances.instances
 WORKER_HOSTNAMES=<% if_link("kubernetes-workers") do |instances| instances.instances.map do |instance|%><%= instance.address %>,<% end end %>
 
 WORKER_HOSTNAMES=${WORKER_HOSTNAMES:-1}
+MASTER_HOSTNAMES=${MASTER_HOSTNAMES:-1}
+
 IFS=','; for HOST in ${WORKER_HOSTNAMES[@]}; do
   iptables -t security -I INPUT -i eth0 -d "$(dig +short $HOST)" -j ACCEPT
 
@@ -110,12 +111,14 @@ IFS=','; for HOST in ${WORKER_HOSTNAMES[@]}; do
   iptables -t filter -I OUTPUT -s "$(dig +short $HOST)" -j ACCEPT
   iptables -t raw -I OUTPUT -s "$(dig +short $HOST)" -j ACCEPT
   iptables -t security -I OUTPUT -s "$(dig +short $HOST)" -j ACCEPT
+  
 
 done 
-MASTER_HOSTNAMES=${MASTER_HOSTNAMES:-1}
 IFS=','; for HOST in ${MASTER_HOSTNAMES[@]}; do
   iptables -t security -I INPUT -i eth0 -s "$(dig +short $HOST)" -j ACCEPT
   iptables -t filter -I INPUT -i eth0 -s "$(dig +short $HOST)" -j ACCEPT
+  iptables -t nat -I INPUT -i eth0 -s "$(dig +short $HOST)" -j ACCEPT
+  iptables -I INPUT -i eth0 -s "$(dig +short $HOST)" -j ACCEPT
   iptables -t filter -I FORWARD -s "$SILK_CIDR" -d "$(dig +short $HOST)" -j ACCEPT
 done 
 

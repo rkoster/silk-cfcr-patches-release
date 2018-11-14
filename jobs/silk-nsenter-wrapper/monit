@@ -1,6 +1,0 @@
-check process silk-nsenter-wrapper
-  with pidfile /var/vcap/sys/run/silk-nsenter-wrapper/job.pid
-  start program "/var/vcap/jobs/silk-nsenter-wrapper/bin/ctl start"
-  stop program "/var/vcap/jobs/silk-nsenter-wrapper/bin/ctl stop"
-  group vcap
-  depends kubelet

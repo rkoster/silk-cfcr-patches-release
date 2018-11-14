@@ -1,0 +1,3 @@
+#!/bin/bash
+
+ln -s -f /var/vcap/jobs/silk-nsenter-wrapper/bin/nsenter /usr/bin/nsenter

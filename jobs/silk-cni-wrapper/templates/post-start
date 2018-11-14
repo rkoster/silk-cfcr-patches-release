@@ -16,35 +16,59 @@ SERVICE_NETWORK_CIDR="10.100.0.0/16"
 
 for c in INPUT OUTPUT; do iptables -t raw -I $c -j LOG --log-prefix "DBG-RAW@$c: "; done
 for c in INPUT OUTPUT; do iptables -t security -I $c -j LOG --log-prefix "DBG-SECURITY@$c: "; done
-for c in INPUT OUTPUT; do iptables -t filter -I $c -j LOG --log-prefix "DBG-filter@$c: "; done
+for c in INPUT OUTPUT; do iptables -t filter -I $c -j LOG --log-prefix "DBG-FILTER@$c: "; done
+for c in INPUT OUTPUT; do iptables -I $c -j LOG --log-prefix "DBG@$c: "; done
+
 
 # OUTPUT eth0 ACCEPT
 iptables -I OUTPUT -o eth0 -j ACCEPT
 iptables -t nat -I OUTPUT -o eth0 -j ACCEPT
 iptables -t security -I OUTPUT -o eth0 -j ACCEPT
 iptables -t raw -I OUTPUT -o eth0 -j ACCEPT
+iptables -t filter -I OUTPUT -o eth0 -j ACCEPT
 # INPUT lo ACCEPT
 iptables -I INPUT -i lo -j ACCEPT
 iptables -t nat -I INPUT -i lo -j ACCEPT
 iptables -t security -I INPUT -i lo -j ACCEPT
 iptables -t raw -I INPUT -i lo -j ACCEPT
+iptables -t filter -I INPUT -i lo -j ACCEPT
 # OUTPUT lo ACCEPT
 iptables -I OUTPUT -o lo -j ACCEPT
 iptables -t nat -I OUTPUT -o lo -j ACCEPT
 iptables -t security -I OUTPUT -o lo -j ACCEPT
 iptables -t raw -I OUTPUT -o lo -j ACCEPT
+iptables -t filter -I OUTPUT -o lo -j ACCEPT
+
+# OUTPUT FROM 169.254.0.1 && 169.254.0.2 ACCEPT
+
 
 # FORWARD ACCEPT POLICY
 iptables -t nat -P FORWARD ACCEPT
 iptables -t raw -P FORWARD ACCEPT
 iptables -t security -P FORWARD ACCEPT
 
+
+
 iptables -I KUBE-FIREWALL -s "$SILK_CIDR" -d "$SERVICE_NETWORK_CIDR" -j ACCEPT
+iptables -I KUBE-FIREWALL -s "169.254.0.1" -d "$SERVICE_NETWORK_CIDR" -j ACCEPT
+iptables -I KUBE-FIREWALL -s "169.254.0.2" -d "$SERVICE_NETWORK_CIDR" -j ACCEPT
 
 
 iptables -t filter -I FORWARD -s "$SILK_CIDR" -d "$SILK_CIDR" -j ACCEPT
 iptables -t filter -I FORWARD -s "$SILK_CIDR" -d "169.254.0.2" -j ACCEPT
 iptables -t filter -I FORWARD -s "$SILK_CIDR" -o eth0 -j ACCEPT
+iptables -t filter -I OUTPUT -s "169.254.0.1" -d "$SILK_CIDR" -j ACCEPT
+iptables -t filter -I OUTPUT -s "169.254.0.2" -d "$SILK_CIDR" -j ACCEPT
+iptables -t filter -I INPUT -s "169.254.0.1" -d "$SILK_CIDR" -j ACCEPT
+iptables -t filter -I INPUT -s "169.254.0.2" -d "$SILK_CIDR" -j ACCEPT
+iptables -t security -I OUTPUT -s "169.254.0.1" -d "$SILK_CIDR" -j ACCEPT
+iptables -t security -I OUTPUT -s "169.254.0.2" -d "$SILK_CIDR" -j ACCEPT
+iptables -t security -I INPUT -s "169.254.0.1" -d "$SILK_CIDR" -j ACCEPT
+iptables -t security -I INPUT -s "169.254.0.2" -d "$SILK_CIDR" -j ACCEPT
+iptables -t raw -I OUTPUT -s "169.254.0.1" -d "$SILK_CIDR" -j ACCEPT
+iptables -t raw -I OUTPUT -s "169.254.0.2" -d "$SILK_CIDR" -j ACCEPT
+iptables -t raw -I INPUT -s "169.254.0.1" -d "$SILK_CIDR" -j ACCEPT
+iptables -t raw -I INPUT -s "169.254.0.2" -d "$SILK_CIDR" -j ACCEPT
 
 # ALLOW ALL TRAFFIC ON KUBE MASTER
 MASTER_HOSTNAMES=<% if_link("kube-apiserver") do |instances| instances.instances.map do |instance|%><%= instance.address %>,<% end end %>
@@ -54,8 +78,14 @@ WORKER_HOSTNAMES=<% if_link("kubernetes-workers") do |instances| instances.insta
 WORKER_HOSTNAMES=${WORKER_HOSTNAMES:-1}
 IFS=','; for HOST in ${WORKER_HOSTNAMES[@]}; do
   iptables -t security -I INPUT -i eth0 -d "$(dig +short $HOST)" -j ACCEPT
+
   iptables -t filter -I INPUT -i eth0 -d "$(dig +short $HOST)" -j ACCEPT
+  iptables -t filter -I INPUT -s "$SILK_CIDR" -d "$(dig +short $HOST)" -j ACCEPT
   iptables -t filter -I FORWARD -s "$SILK_CIDR" -d "$(dig +short $HOST)" -j ACCEPT
+  iptables -t filter -I OUTPUT -s "$(dig +short $HOST)" -j ACCEPT
+  iptables -t raw -I OUTPUT -s "$(dig +short $HOST)" -j ACCEPT
+  iptables -t security -I OUTPUT -s "$(dig +short $HOST)" -j ACCEPT
+
 done 
 MASTER_HOSTNAMES=${MASTER_HOSTNAMES:-1}
 IFS=','; for HOST in ${MASTER_HOSTNAMES[@]}; do

@@ -66,7 +66,7 @@ iptables -t filter -I INPUT -s "$SILK_CIDR" -d "$SELF_HOSTNAME" -j ACCEPT
 IFS=','; for HOST in ${MASTER_HOSTNAMES[@]}; do
   iptables -t filter -I FORWARD -s "$SILK_CIDR" -d "$HOST" -o eth0 -j ACCEPT
 done 
-iptables -t filter -I FORWARD -s "$SILK_CIDR" -o eth0
+iptables -t filter -I FORWARD -s "$SILK_CIDR" -o eth0 -j ACCEPT
 iptables -t filter -I FORWARD -s "$SILK_CIDR" -d "$SILK_CIDR" -j ACCEPT
 
 

@@ -12,6 +12,15 @@ while curl localhost:23954; do
 
 done
 SERVICE_NETWORK_CIDR="10.100.0.0/16"
+# ALLOW ALL TRAFFIC ON KUBE MASTER
+MASTER_HOSTNAMES=<% if_link("kube-apiserver") do |instances| instances.instances.map do |instance|%><%= instance.address %>,<% end end %>
+# ALLOW ALL TRAFFIC ON KUBE MASTER
+WORKER_HOSTNAMES=<% if_link("kubernetes-workers") do |instances| instances.instances.map do |instance|%><%= instance.address %>,<% end end %>
+
+WORKER_HOSTNAMES=${WORKER_HOSTNAMES:-1}
+MASTER_HOSTNAMES=${MASTER_HOSTNAMES:-1}
+
+
 # ONLY USING INSERT, FIRST RULES ADDED WILL BE LAST ONES TO TRAVERSE, THUS EVERYTHING GETS LOGGED THAT DID NOT HIT ANOTHER CHAIN
 
 iptables -t raw -I PREROUTING -j TRACE
@@ -52,6 +61,10 @@ iptables -t filter -I OUTPUT -o silk-vtep -j ACCEPT
 
 iptables -t mangle -I POSTROUTING -s 169.254.0.1 -d "$SILK_CIDR" -j ACCEPT
 
+
+IFS=','; for HOST in ${MASTER_HOSTNAMES[@]}; do
+  iptables -t filter -I FORWARD -s "$SILK_CIDR" -d "$HOST" -o eth0 -j ACCEPT
+done 
 
 
 
@@ -112,13 +125,7 @@ iptables -t security -I INPUT -s "10.255.66.0/24" -d "10.0.1.14" -j ACCEPT
 
 
 
-# ALLOW ALL TRAFFIC ON KUBE MASTER
-MASTER_HOSTNAMES=<% if_link("kube-apiserver") do |instances| instances.instances.map do |instance|%><%= instance.address %>,<% end end %>
-# ALLOW ALL TRAFFIC ON KUBE MASTER
-WORKER_HOSTNAMES=<% if_link("kubernetes-workers") do |instances| instances.instances.map do |instance|%><%= instance.address %>,<% end end %>
 
-WORKER_HOSTNAMES=${WORKER_HOSTNAMES:-1}
-MASTER_HOSTNAMES=${MASTER_HOSTNAMES:-1}
 
 IFS=','; for HOST in ${WORKER_HOSTNAMES[@]}; do
   iptables -t security -I INPUT -i eth0 -d "$(dig +short $HOST)" -j ACCEPT
@@ -132,13 +139,7 @@ IFS=','; for HOST in ${WORKER_HOSTNAMES[@]}; do
   
 
 done 
-IFS=','; for HOST in ${MASTER_HOSTNAMES[@]}; do
-  iptables -t security -I INPUT -i eth0 -s "$(dig +short $HOST)" -j ACCEPT
-  iptables -t filter -I INPUT -i eth0 -s "$(dig +short $HOST)" -j ACCEPT
-  iptables -t nat -I INPUT -i eth0 -s "$(dig +short $HOST)" -j ACCEPT
-  iptables -I INPUT -i eth0 -s "$(dig +short $HOST)" -j ACCEPT
-  iptables -t filter -I FORWARD -s "$SILK_CIDR" -d "$(dig +short $HOST)" -j ACCEPT
-done 
+
 
 #ALLOW EVERYTHING ORIGINATING FROM MASTERS
 

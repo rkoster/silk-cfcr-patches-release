@@ -1,4 +1,10 @@
 #!/bin/bash
-/var/vcap/jobs/kubelet/packages/cni/bin/nsenter \
+
+if [ "$1" == "-t" ]; then
+  /var/vcap/jobs/kubelet/packages/cni/bin/nsenter $@
+else
+  /var/vcap/jobs/kubelet/packages/cni/bin/nsenter \
     $1 -F -- \
     ip -o -4 addr show dev eth0 scope link | sed 's# peer#/32 peer#g'
+
+fi

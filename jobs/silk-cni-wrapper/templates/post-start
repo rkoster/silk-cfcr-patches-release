@@ -23,8 +23,25 @@ MASTER_HOSTNAMES=${MASTER_HOSTNAMES:-1}
 
 # ONLY USING INSERT, FIRST RULES ADDED WILL BE LAST ONES TO TRAVERSE, THUS EVERYTHING GETS LOGGED THAT DID NOT HIT ANOTHER CHAIN
 
+
+
+exit 0
 iptables -t raw -I PREROUTING -j TRACE
 iptables -t raw -I OUTPUT -j TRACE
+
+
+iptables -t mangle -I POSTROUTING -s 169.254.0.1 -d "$SILK_CIDR" -j ACCEPT
+iptables -t filter -I INPUT -s "$SILK_CIDR" -d "$SELF_HOSTNAME" -j ACCEPT
+
+
+IFS=','; for HOST in ${MASTER_HOSTNAMES[@]}; do
+  iptables -t filter -I FORWARD -s "$SILK_CIDR" -d "$HOST" -o eth0 -j ACCEPT
+done 
+iptables -t filter -I FORWARD -s "$SILK_CIDR" -o eth0 -j ACCEPT
+iptables -t filter -I FORWARD -s "$SILK_CIDR" -d "$SILK_CIDR" -j ACCEPT
+
+
+
 
 # OUTPUT & FORWARD POLICY ACCEPT ON filter,nat,mangle
 
@@ -58,90 +75,3 @@ iptables -t nat -I OUTPUT -o silk-vtep -j ACCEPT
 iptables -t security -I OUTPUT -o silk-vtep -j ACCEPT
 iptables -t raw -I OUTPUT -o silk-vtep -j ACCEPT
 iptables -t filter -I OUTPUT -o silk-vtep -j ACCEPT
-
-iptables -t mangle -I POSTROUTING -s 169.254.0.1 -d "$SILK_CIDR" -j ACCEPT
-iptables -t filter -I INPUT -s "$SILK_CIDR" -d "$SELF_HOSTNAME" -j ACCEPT
-
-
-IFS=','; for HOST in ${MASTER_HOSTNAMES[@]}; do
-  iptables -t filter -I FORWARD -s "$SILK_CIDR" -d "$HOST" -o eth0 -j ACCEPT
-done 
-iptables -t filter -I FORWARD -s "$SILK_CIDR" -o eth0 -j ACCEPT
-iptables -t filter -I FORWARD -s "$SILK_CIDR" -d "$SILK_CIDR" -j ACCEPT
-
-
-exit 0
-for c in PREROUTING OUTPUT; do iptables -t raw -I $c -j LOG --log-prefix "DBG-RAW@$c: "; done
-for c in INPUT OUTPUT FORWARD; do iptables -t security -I $c -j LOG --log-prefix "DBG-SECURITY@$c: "; done
-for c in INPUT OUTPUT FORWARD; do iptables -t filter -I $c -j LOG --log-prefix "DBG-FILTER@$c: "; done
-for c in INPUT OUTPUT FORWARD; do iptables -I $c -j LOG --log-prefix "DBG@$c: "; done
-for c in PREROUTING POSTROUTING OUTPUT; do iptables -t nat -I $c -j LOG --log-prefix "DBG-NAT@$c: "; done
-
-for c in PREROUTING POSTROUTING OUTPUT; do iptables -t mangle -I $c -j LOG --log-prefix "DBG-NAT@$c: "; done
-# ALL INPUT ACCEPT ESTABLISHED,RELATED
-iptables -I INPUT -m state --state RELATED,ESTABLISHEDo -j ACCEPT
-iptables -t security -I INPUT -m state --state RELATED,ESTABLISHED -j ACCEPT
-iptables -t filter -I INPUT -m state --state RELATED,ESTABLISHED -j ACCEPT
-iptables -t nat -I INPUT -m state --state RELATED,ESTABLISHED -j ACCEPT
-
-# OUTPUT FROM 169.254.0.1 && 169.254.0.2 ACCEPT
-
-
-# FORWARD ACCEPT POLICY
-iptables -t nat -P FORWARD ACCEPT
-iptables -t raw -P FORWARD ACCEPT
-iptables -t security -P FORWARD ACCEPT
-
-
-
-iptables -I KUBE-FIREWALL -s "$SILK_CIDR" -d "$SERVICE_NETWORK_CIDR" -j ACCEPT
-iptables -I KUBE-FIREWALL -s "169.254.0.1" -d "$SERVICE_NETWORK_CIDR" -j ACCEPT
-iptables -I KUBE-FIREWALL -s "169.254.0.2" -d "$SERVICE_NETWORK_CIDR" -j ACCEPT
-
-
-iptables -t filter -I FORWARD -s "$SILK_CIDR" -d "$SILK_CIDR" -j ACCEPT
-iptables -t filter -I FORWARD -s "$SILK_CIDR" -d "169.254.0.2" -j ACCEPT
-iptables -t filter -I FORWARD -s "$SILK_CIDR" -o eth0 -j ACCEPT
-iptables -t filter -I OUTPUT -s "169.254.0.1" -d "$SILK_CIDR" -j ACCEPT
-iptables -t filter -I OUTPUT -s "169.254.0.2" -d "$SILK_CIDR" -j ACCEPT
-iptables -t filter -I INPUT -s "169.254.0.1" -d "$SILK_CIDR" -j ACCEPT
-iptables -t filter -I INPUT -s "169.254.0.2" -d "$SILK_CIDR" -j ACCEPT
-iptables -t security -I OUTPUT -s "169.254.0.1" -d "$SILK_CIDR" -j ACCEPT
-iptables -t security -I OUTPUT -s "169.254.0.2" -d "$SILK_CIDR" -j ACCEPT
-iptables -t security -I INPUT -s "169.254.0.1" -d "$SILK_CIDR" -j ACCEPT
-iptables -t security -I INPUT -s "169.254.0.2" -d "$SILK_CIDR" -j ACCEPT
-iptables -t raw -I OUTPUT -s "169.254.0.1" -d "$SILK_CIDR" -j ACCEPT
-iptables -t raw -I OUTPUT -s "169.254.0.2" -d "$SILK_CIDR" -j ACCEPT
-iptables -t raw -I INPUT -s "169.254.0.1" -d "$SILK_CIDR" -j ACCEPT
-iptables -t raw -I INPUT -s "169.254.0.2" -d "$SILK_CIDR" -j ACCEPT
-
-iptables -I INPUT -s "10.255.66.0/24" -d "169.254.0.1" -j ACCEPT
-iptables -I INPUT -s "10.255.66.0/24" -d "169.254.0.2" -j ACCEPT
-iptables -I INPUT -d "10.255.66.0/24" -s "169.254.0.2" -j ACCEPT
-iptables -I INPUT -d "10.255.66.0/24" -s "169.254.0.1" -j ACCEPT
-iptables -t security -I INPUT -d "10.255.66.0/24" -s "169.254.0.1" -j ACCEPT
-iptables -t security -I INPUT -d "10.255.66.0/24" -s "169.254.0.2" -j ACCEPT
-iptables -t security -I INPUT -s "10.255.66.0/24" -d "169.254.0.2" -j ACCEPT
-iptables -t security -I INPUT -s "10.255.66.0/24" -d "169.254.0.1" -j ACCEPTa
-iptables -t security -I INPUT -s "10.255.66.0/24" -d "10.0.1.14" -j ACCEPT
-
-
-
-
-
-
-  iptables -t security -I INPUT -i eth0 -d "$(dig +short $HOST)" -j ACCEPT
-
-  iptables -t filter -I INPUT -i eth0 -d "$(dig +short $HOST)" -j ACCEPT
-  iptables -t filter -I INPUT -s "$SILK_CIDR" -d "$(dig +short $HOST)" -j ACCEPT
-  iptables -t filter -I FORWARD -s "$SILK_CIDR" -d "$(dig +short $HOST)" -j ACCEPT
-  iptables -t filter -I OUTPUT -s "$(dig +short $HOST)" -j ACCEPT
-  iptables -t raw -I OUTPUT -s "$(dig +short $HOST)" -j ACCEPT
-  iptables -t security -I OUTPUT -s "$(dig +short $HOST)" -j ACCEPT
-  
-
-done 
-
-
-#ALLOW EVERYTHING ORIGINATING FROM MASTERS
-

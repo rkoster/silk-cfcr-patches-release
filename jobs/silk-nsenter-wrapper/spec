@@ -3,7 +3,6 @@ name: silk-nsenter-wrapper
 
 templates:
   nsenter: bin/nsenter
-  post-start: bin/post-start
 
 packages: []
 

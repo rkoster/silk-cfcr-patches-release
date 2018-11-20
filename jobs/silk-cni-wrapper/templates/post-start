@@ -23,6 +23,13 @@ MASTER_HOSTNAMES=${MASTER_HOSTNAMES:-1}
 
 # ONLY USING INSERT, FIRST RULES ADDED WILL BE LAST ONES TO TRAVERSE, THUS EVERYTHING GETS LOGGED THAT DID NOT HIT ANOTHER CHAIN
 
+IFS=','; for HOST in ${MASTER_HOSTNAMES[@]}; do
+  iptables -t filter -I FORWARD -s "$SILK_CIDR" -d "$HOST" -o eth0 -j ACCEPT
+done
+iptables -t filter -I FORWARD -s "$SILK_CIDR" ! -d "10.255.0.0/16" -j ACCEPT
+iptables -t filter -I FORWARD -s "$SILK_CIDR" -d "$SILK_CIDR" -j ACCEPT
+iptables -t filter -I OUTPUT -s "$SILK_CIDR" ! -d "10.255.0.0/16" -j ACCEPT
+iptables -t filter -I INPUT -s "$SILK_CIDR" -d "$SELF_HOSTNAME" -j ACCEPT
 
 
 exit 0

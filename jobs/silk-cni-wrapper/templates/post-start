@@ -13,7 +13,8 @@ while curl localhost:23954; do
 done
 SERVICE_NETWORK_CIDR="10.100.0.0/16"
 # ALLOW ALL TRAFFIC ON KUBE MASTER
-
+SELF_HOSTNAME="<%= spec.address %>"
+MASTER_HOSTNAMES=${MASTER_HOSTNAMES:-1}
 
 
 # ONLY USING INSERT, FIRST RULES ADDED WILL BE LAST ONES TO TRAVERSE, THUS EVERYTHING GETS LOGGED THAT DID NOT HIT ANOTHER CHAIN
@@ -23,17 +24,18 @@ iptables -t filter -I OUTPUT 1 -s "$SILK_CIDR" ! -d "10.255.0.0/16" -j ACCEPT
 iptables -t filter -I INPUT 1 -s "$SILK_CIDR" -d "$SELF_HOSTNAME" -j ACCEPT
 
 
+
 exit 0
-MASTER_HOSTNAMES=<% if_link("kube-apiserver") do |instances| instances.instances.map do |instance|%><%= instance.address %>,<% end end %>
-# ALLOW ALL TRAFFIC ON KUBE MASTER
-WORKER_HOSTNAMES=<% if_link("kubernetes-workers") do |instances| instances.instances.map do |instance|%><%= instance.address %>,<% end end %>
-SELF_HOSTNAME="<%= spec.address %>"
-WORKER_HOSTNAMES=${WORKER_HOSTNAMES:-1}
-MASTER_HOSTNAMES=${MASTER_HOSTNAMES:-1}
 IFS=','; for HOST in ${MASTER_HOSTNAMES[@]}; do
   iptables -t filter -I FORWARD $index -s "$SILK_CIDR" -d "$HOST" -o eth0 -j ACCEPT
   index=$((index+1))
 done
+
+# ALLOW ALL TRAFFIC ON KUBE MASTER
+WORKER_HOSTNAMES=<% if_link("kubernetes-workers") do |instances| instances.instances.map do |instance|%><%= instance.address %>,<% end end %>
+
+WORKER_HOSTNAMES=${WORKER_HOSTNAMES:-1}
+
 iptables -t raw -I PREROUTING -j TRACE
 iptables -t raw -I OUTPUT -j TRACE
 
